@@ -1,0 +1,147 @@
+services:
+
+  servio-postgres:
+    image: postgres:16
+    container_name: servio-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: servio_db        # nombre DB
+      POSTGRES_USER: servio        # usuario DB
+      POSTGRES_PASSWORD: servio123 # password DB
+    ports:
+      - "5433:5432"                # puerto host:container
+    volumes:
+      - servio_postgres_data:/var/lib/postgresql/data # datos persistentes
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U servio -d servio_db"] # espera DB lista
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - servio-network
+
+  servio-redis:
+    image: redis:7
+    container_name: servio-redis
+    restart: always
+    ports:
+      - "6379:6379"                # puerto redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"] # test redis
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - servio-network
+
+  servio-minio:
+    image: minio/minio
+    container_name: servio-minio
+    command: server /data --console-address ":9001" # inicia minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: servio      # usuario minio
+      MINIO_ROOT_PASSWORD: servio123 # password minio
+    ports:
+      - "9000:9000"                # api storage
+      - "9001:9001"                # consola web
+    volumes:
+      - servio_minio_data:/data    # datos storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"] # test minio
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - servio-network
+
+  servio-mailhog:
+    image: mailhog/mailhog
+    container_name: servio-mailhog
+    restart: always
+    ports:
+      - "1025:1025"                # smtp
+      - "8025:8025"                # ui web
+    networks:
+      - servio-network
+
+  servio-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: servio-backend-dev
+    restart: always
+    depends_on:
+      servio-postgres:
+        condition: service_healthy # espera DB
+      servio-redis:
+        condition: service_healthy # espera redis
+      servio-minio:
+        condition: service_healthy # espera storage
+      servio-mailhog:
+        condition: service_started # espera mail
+    environment:
+      SPRING_PROFILES_ACTIVE: dev  # perfil spring
+
+      DATABASE_URL: jdbc:postgresql://servio-postgres:5432/servio_db # url db
+      DATABASE_USER: servio        # usuario db
+      DATABASE_PASSWORD: servio123 # password db
+
+      HIBERNATE_DDL_AUTO: update   # auto schema
+
+      MAIL_HOST: servio-mailhog    # smtp host
+      MAIL_PORT: 1025              # smtp port
+
+      CACHE_HOST: servio-redis     # redis host
+      CACHE_PORT: 6379             # redis port
+
+      OBJECT_STORAGE_ENDPOINT: http://servio-minio:9000 # storage url
+      OBJECT_STORAGE_ACCESS_KEY: servio
+      OBJECT_STORAGE_SECRET_KEY: servio123
+      OBJECT_STORAGE_BUCKET: servio-assets
+
+    ports:
+      - "8085:8080"                # api puerto
+
+    volumes:
+      - ./backend:/app             # codigo backend
+      - ~/.m2:/root/.m2            # cache maven
+
+    command: mvn spring-boot:run   # run spring
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"] # health api
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 40s
+
+    networks:
+      - servio-network
+
+  servio-frontend:
+    image: node:20-bullseye
+    container_name: servio-frontend-dev
+    working_dir: /app
+    restart: always
+    depends_on:
+      servio-backend:
+        condition: service_healthy # espera api
+    environment:
+      NEXT_PUBLIC_API_URL: http://servio-backend:8080 # api interna
+      CHOKIDAR_USEPOLLING: "true"  # hot reload
+    ports:
+      - "3001:3000"                # puerto frontend
+    volumes:
+      - ./frontend:/app            # codigo frontend
+    command: sh -c "npm install && echo 'npm install finished' && npx next dev" # run next
+    networks:
+      - servio-network
+
+networks:
+  servio-network:
+    driver: bridge                 # red interna
+
+volumes:
+  servio_postgres_data:            # volumen postgres
+  servio_minio_data:               # volumen minio

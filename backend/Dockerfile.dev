@@ -1,0 +1,22 @@
+FROM eclipse-temurin:21-jdk-jammy
+
+WORKDIR /app
+
+# Instalar Maven dentro del contenedor
+RUN apt-get update \
+    && apt-get install -y maven \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar solo el pom primero para cache
+COPY pom.xml .
+
+RUN mvn -B -q -e -DskipTests dependency:go-offline
+
+# Copiar el resto del código
+COPY . .
+
+# Puerto del backend
+EXPOSE 8080
+
+# Ejecutar Spring Boot en modo desarrollo
+CMD ["mvn", "spring-boot:run"]
