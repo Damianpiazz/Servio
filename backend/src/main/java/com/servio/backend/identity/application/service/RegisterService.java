@@ -11,9 +11,10 @@ import com.servio.backend.identity.domain.exception.EmailAlreadyExistsException;
 import com.servio.backend.notification.mail.application.port.in.SendEmailUseCase;
 import com.servio.backend.notification.mail.domain.ContentType;
 import com.servio.backend.notification.mail.domain.Email;
-import com.servio.backend.notification.mail.infrastructure.template.TemplateRenderer;
+import com.servio.backend.shared.mail.TemplateRenderer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +30,9 @@ public class RegisterService implements RegisterUseCase {
     private final TokenProviderPort tokenProviderPort;
     private final SendEmailUseCase sendEmailUseCase;
     private final TemplateRenderer templateRenderer;
+
+    @Value("${mail.default-sender}")
+    private String defaultSender;
 
     @Override
     public Token register(RegisterCommand command) {
@@ -59,7 +63,7 @@ public class RegisterService implements RegisterUseCase {
             String html = templateRenderer.render("register", Map.of("name", user.getFirstname()));
             sendEmailUseCase.send(
                     Email.builder()
-                            .from("no-reply@servio.com") // TODO: mover a properties
+                            .from(defaultSender)
                             .to(user.getEmail())
                             .subject("Bienvenido a Servio")
                             .body(html)
