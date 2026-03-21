@@ -1,25 +1,19 @@
 package com.servio.backend.notification.mail;
 
+import com.servio.backend.BaseIntegrationTest;
 import com.servio.backend.notification.mail.application.port.in.SendEmailUseCase;
 import com.servio.backend.notification.mail.domain.ContentType;
 import com.servio.backend.notification.mail.domain.Email;
-import com.servio.backend.notification.mail.infrastructure.template.TemplateRenderer;
+import com.servio.backend.shared.mail.TemplateRenderer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Map;
 
-@SpringBootTest
-@ActiveProfiles("test")
-class SendEmailIntegrationTest {
+class SendEmailIntegrationTest extends BaseIntegrationTest {
 
-    @Autowired
-    private SendEmailUseCase sendEmailUseCase;
-
-    @Autowired
-    private TemplateRenderer templateRenderer;
+    @Autowired private SendEmailUseCase sendEmailUseCase;
+    @Autowired private TemplateRenderer templateRenderer;
 
     @Test
     void debeEnviarEmailDeRegistroAMailhog() {
