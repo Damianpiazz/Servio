@@ -7,11 +7,12 @@ import com.servio.backend.identity.domain.User;
 import com.servio.backend.notification.mail.application.port.in.SendEmailUseCase;
 import com.servio.backend.notification.mail.domain.ContentType;
 import com.servio.backend.notification.mail.domain.Email;
-import com.servio.backend.notification.mail.infrastructure.template.TemplateRenderer;
 import com.servio.backend.shared.exception.InvalidArgumentException;
 import com.servio.backend.shared.exception.UnauthorizedException;
+import com.servio.backend.shared.mail.TemplateRenderer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +27,9 @@ public class ChangePasswordService implements ChangePasswordUseCase {
     private final PasswordEncoder passwordEncoder;
     private final SendEmailUseCase sendEmailUseCase;
     private final TemplateRenderer templateRenderer;
+
+    @Value("${mail.default-sender}")
+    private String defaultSender;
 
     @Override
     public void changePassword(ChangePasswordCommand command, User user) {
@@ -47,7 +51,7 @@ public class ChangePasswordService implements ChangePasswordUseCase {
             String html = templateRenderer.render("password_changed", Map.of("name", user.getFirstname()));
             sendEmailUseCase.send(
                     Email.builder()
-                            .from("no-reply@servio.com")
+                            .from(defaultSender)
                             .to(user.getEmail())
                             .subject("Tu contraseña fue cambiada")
                             .body(html)
