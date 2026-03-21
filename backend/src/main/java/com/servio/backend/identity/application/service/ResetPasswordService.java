@@ -10,8 +10,8 @@ import com.servio.backend.identity.domain.exception.TokenExpiredException;
 import com.servio.backend.notification.mail.application.port.in.SendEmailUseCase;
 import com.servio.backend.notification.mail.domain.ContentType;
 import com.servio.backend.notification.mail.domain.Email;
-import com.servio.backend.notification.mail.infrastructure.template.TemplateRenderer;
 import com.servio.backend.shared.exception.ResourceNotFoundException;
+import com.servio.backend.shared.mail.TemplateRenderer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,13 +36,19 @@ public class ResetPasswordService implements ResetPasswordUseCase {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
+    @Value("${mail.default-sender}")
+    private String defaultSender;
+
+    @Value("${identity.password-reset.expiration-minutes:30}")
+    private int expirationMinutes;
+
     @Override
     public void requestReset(String email) {
         User user = userRepositoryPort.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", email));
 
         String token = UUID.randomUUID().toString();
-        tokenRepositoryPort.save(token, user, LocalDateTime.now().plusMinutes(30));
+        tokenRepositoryPort.save(token, user, LocalDateTime.now().plusMinutes(expirationMinutes));
         enviarEmailReset(user, token);
     }
 
@@ -71,7 +77,7 @@ public class ResetPasswordService implements ResetPasswordUseCase {
             ));
             sendEmailUseCase.send(
                     Email.builder()
-                            .from("no-reply@servio.com") // TODO: mover a properties
+                            .from(defaultSender)
                             .to(user.getEmail())
                             .subject("Recuperación de contraseña")
                             .body(html)
