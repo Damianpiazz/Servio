@@ -5,9 +5,11 @@ services:
     container_name: servio-postgres
     restart: always
     environment:
-      POSTGRES_DB: servio_db        # nombre DB
+      POSTGRES_DB: servio_db       # nombre DB
       POSTGRES_USER: servio        # usuario DB
       POSTGRES_PASSWORD: servio123 # password DB
+      PGTZ: UTC
+      TZ: UTC
     ports:
       - "5433:5432"                # puerto host:container
     volumes:
@@ -81,7 +83,7 @@ services:
       servio-mailhog:
         condition: service_started # espera mail
     environment:
-      SPRING_PROFILES_ACTIVE: dev  # perfil spring
+      SPRING_PROFILES_ACTIVE: docker  # perfil spring
 
       DATABASE_URL: jdbc:postgresql://servio-postgres:5432/servio_db # url db
       DATABASE_USER: servio        # usuario db
