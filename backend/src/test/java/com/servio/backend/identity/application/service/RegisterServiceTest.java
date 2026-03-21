@@ -8,13 +8,15 @@ import com.servio.backend.identity.domain.Token;
 import com.servio.backend.identity.domain.User;
 import com.servio.backend.identity.domain.exception.EmailAlreadyExistsException;
 import com.servio.backend.notification.mail.application.port.in.SendEmailUseCase;
-import com.servio.backend.notification.mail.infrastructure.template.TemplateRenderer;
+import com.servio.backend.shared.mail.TemplateRenderer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,6 +33,11 @@ class RegisterServiceTest {
 
     @InjectMocks
     private RegisterService registerService;
+
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(registerService, "defaultSender", "no-reply@servio.com");
+    }
 
     @Test
     void debeRegistrarUsuarioCorrectamente() {
@@ -62,11 +69,6 @@ class RegisterServiceTest {
         when(userRepositoryPort.existsByEmail(any())).thenReturn(false);
         when(passwordEncoder.encode(any())).thenReturn("encoded");
         when(templateRenderer.render(any(), any())).thenReturn("<html></html>");
-
-        RegisterCommand commandSinRole = new RegisterCommand(
-                "Juan", "Perez", "juan@test.com", "Password1", null
-        );
-
         when(userRepositoryPort.save(any())).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             assertThat(user.getRole()).isEqualTo(Role.USER);
@@ -75,11 +77,13 @@ class RegisterServiceTest {
         when(tokenProviderPort.generateAccessToken(any(), any())).thenReturn("access.token");
         when(tokenProviderPort.generateRefreshToken(any())).thenReturn("refresh.token");
 
-        registerService.register(commandSinRole);
+        registerService.register(new RegisterCommand(
+                "Juan", "Perez", "juan@test.com", "Password1", null
+        ));
     }
 
     @Test
-    void debeEnviarEmailDeBienvenida() throws Exception {
+    void debeEnviarEmailDeBienvenida() {
         when(userRepositoryPort.existsByEmail(any())).thenReturn(false);
         when(passwordEncoder.encode(any())).thenReturn("encoded");
         when(userRepositoryPort.save(any())).thenAnswer(i -> i.getArgument(0));
@@ -93,7 +97,7 @@ class RegisterServiceTest {
     }
 
     @Test
-    void debeContinuarSiElEmailFalla() throws Exception {
+    void debeContinuarSiElEmailFalla() {
         when(userRepositoryPort.existsByEmail(any())).thenReturn(false);
         when(passwordEncoder.encode(any())).thenReturn("encoded");
         when(userRepositoryPort.save(any())).thenAnswer(i -> i.getArgument(0));
