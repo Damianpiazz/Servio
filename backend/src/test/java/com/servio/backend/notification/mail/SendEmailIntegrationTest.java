@@ -4,7 +4,7 @@ import com.servio.backend.BaseIntegrationTest;
 import com.servio.backend.notification.mail.application.port.in.SendEmailUseCase;
 import com.servio.backend.notification.mail.domain.ContentType;
 import com.servio.backend.notification.mail.domain.Email;
-import com.servio.backend.notification.mail.infrastructure.template.TemplateRenderer;
+import com.servio.backend.shared.mail.TemplateRenderer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
