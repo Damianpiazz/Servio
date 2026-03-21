@@ -107,7 +107,7 @@ services:
 
     volumes:
       - ./backend:/app             # codigo backend
-      - ~/.m2:/root/.m2            # cache maven
+      - maven_cache:/root/.m2            # cache maven
 
     command: mvn spring-boot:run   # run spring
 
@@ -116,7 +116,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 15
-      start_period: 40s
+      start_period: 400s
 
     networks:
       - servio-network
@@ -147,3 +147,4 @@ networks:
 volumes:
   servio_postgres_data:            # volumen postgres
   servio_minio_data:               # volumen minio
+  maven_cache:                     # cache maven
