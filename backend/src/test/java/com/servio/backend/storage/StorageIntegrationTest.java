@@ -1,20 +1,17 @@
 package com.servio.backend.storage;
 
+import com.servio.backend.BaseIntegrationTest;
 import com.servio.backend.storage.application.port.in.StorageUseCase;
 import com.servio.backend.storage.domain.StorageFile;
 import com.servio.backend.storage.domain.StorageObject;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
-@SpringBootTest
-@ActiveProfiles("test")
-class StorageIntegrationTest {
+class StorageIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private StorageUseCase storageUseCase;
@@ -35,7 +32,6 @@ class StorageIntegrationTest {
         assertThat(result.getUrl()).isNotBlank();
         assertThat(result.getFullPath()).isEqualTo("test/test_foto.jpg");
 
-        // limpieza
         storageUseCase.delete(result.getFullPath());
     }
 
@@ -63,7 +59,6 @@ class StorageIntegrationTest {
         assertThat(results).hasSize(2);
         assertThat(results).allMatch(r -> r.getUrl() != null);
 
-        // limpieza
         storageUseCase.deleteMultiple(
                 results.stream().map(StorageObject::getFullPath).toList()
         );
@@ -83,7 +78,6 @@ class StorageIntegrationTest {
         assertThat(storageUseCase.exists("test/test_existe.jpg")).isTrue();
         assertThat(storageUseCase.exists("test/no_existe.jpg")).isFalse();
 
-        // limpieza
         storageUseCase.delete("test/test_existe.jpg");
     }
 
