@@ -5,7 +5,7 @@ import com.servio.backend.identity.application.port.out.UserRepositoryPort;
 import com.servio.backend.identity.domain.Role;
 import com.servio.backend.identity.domain.User;
 import com.servio.backend.notification.mail.application.port.in.SendEmailUseCase;
-import com.servio.backend.notification.mail.infrastructure.template.TemplateRenderer;
+import com.servio.backend.shared.mail.TemplateRenderer;
 import com.servio.backend.shared.exception.InvalidArgumentException;
 import com.servio.backend.shared.exception.UnauthorizedException;
 import org.junit.jupiter.api.Test;
