@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Raiz = directorio actual
 BASE_DIR="."
 OUTPUT_FILE="backend_dump.txt"
+PACKAGE_FILTER="$1"
 
-# Limpiar salida
+# Limpiar archivo
 > "$OUTPUT_FILE"
 
-# Extensiones tipicas de Spring Boot + config
+# Extensiones
 INCLUDE_EXTENSIONS=(
   "*.java" "*.kt"
   "*.xml"
@@ -17,23 +17,39 @@ INCLUDE_EXTENSIONS=(
   "*.md"
 )
 
-# Construir expresion find
+# Construir expresion de extensiones
 FIND_EXPR=""
 for ext in "${INCLUDE_EXTENSIONS[@]}"; do
   FIND_EXPR+=" -iname \"$ext\" -o"
 done
 FIND_EXPR=${FIND_EXPR::-3}
 
-# Ejecutar find desde el directorio actual
-eval "find \"$BASE_DIR\" -type f \( $FIND_EXPR \) \
-  -not -path '*/.git/*' \
-  -not -path '*/target/*' \
-  -not -path '*/build/*' \
-  -not -path '*/node_modules/*' \
-  -not -path '*/.idea/*' \
-  -not -path '*/.vscode/*'" | sort | while read -r file; do
+# =========================
+# Ejecutar find
+# =========================
 
-  # Ruta relativa limpia (sin ./)
+if [ -n "$PACKAGE_FILTER" ]; then
+  FIND_CMD="find \"$BASE_DIR\" -type f \( $FIND_EXPR \) \
+    -not -path '*/.git/*' \
+    -not -path '*/target/*' \
+    -not -path '*/build/*' \
+    -not -path '*/node_modules/*' \
+    -not -path '*/.idea/*' \
+    -not -path '*/.vscode/*' \
+    -path \"*/$PACKAGE_FILTER/*\""
+else
+  FIND_CMD="find \"$BASE_DIR\" -type f \( $FIND_EXPR \) \
+    -not -path '*/.git/*' \
+    -not -path '*/target/*' \
+    -not -path '*/build/*' \
+    -not -path '*/node_modules/*' \
+    -not -path '*/.idea/*' \
+    -not -path '*/.vscode/*'"
+fi
+
+# Ejecutar y procesar
+eval "$FIND_CMD" | sort | while read -r file; do
+
   relative_path="${file#./}"
 
   echo "### $relative_path" >> "$OUTPUT_FILE"
