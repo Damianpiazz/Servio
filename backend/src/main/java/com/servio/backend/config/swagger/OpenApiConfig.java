@@ -19,7 +19,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("Servio API")
-                        .description("Backend de Servio")
+                        .description("Servio Backend")
                         .version("v1")
                         .contact(new Contact()
                                 .name("Servio")

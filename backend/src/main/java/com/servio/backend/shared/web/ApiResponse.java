@@ -33,11 +33,11 @@ public class ApiResponse<T> {
     }
 
     public static <T> ApiResponse<T> created(T data) {
-        return new ApiResponse<>(HttpStatus.CREATED, "creado", data, false);
+        return new ApiResponse<>(HttpStatus.CREATED, "created", data, false);
     }
 
     public static ApiResponse<Void> noContent() {
-        return new ApiResponse<>(HttpStatus.NO_CONTENT, "sin contenido", null, false);
+        return new ApiResponse<>(HttpStatus.NO_CONTENT, "no content", null, false);
     }
 
     public static <T> ApiResponse<T> error(HttpStatus httpStatus, String message) {
