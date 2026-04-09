@@ -1,56 +1,66 @@
-package com.servio.backend.storage.infrastructure.adapter;
+package com.servio.backend.storage.service;
 
-import com.servio.backend.storage.application.port.out.StoragePort;
-import com.servio.backend.storage.domain.StorageFile;
-import com.servio.backend.storage.domain.StorageObject;
-import com.servio.backend.storage.infrastructure.config.ObjectStorageConfig;
+import com.servio.backend.storage.config.StorageProperties;
+import com.servio.backend.storage.exception.StorageDeleteException;
+import com.servio.backend.storage.exception.StorageDownloadException;
+import com.servio.backend.storage.exception.StorageUploadException;
+import com.servio.backend.storage.model.FileToUpload;
+import com.servio.backend.storage.model.UploadedFile;
+import com.servio.backend.storage.validation.FileValidator;
 import io.minio.*;
 import io.minio.errors.ErrorResponseException;
 import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-@Component
+@Service
 @RequiredArgsConstructor
-public class MinioStorageAdapter implements StoragePort {
+public class MinioStorageService implements IStorageService {
 
     private final MinioClient minioClient;
-    private final ObjectStorageConfig objectStorageConfig;
+    private final StorageProperties properties;
+    private final FileValidator fileValidator;
 
     @Override
-    public StorageObject upload(StorageFile file) {
+    public UploadedFile upload(FileToUpload file) {
+        fileValidator.validate(file);
+
         try {
             ensureBucketExists();
 
             minioClient.putObject(
                     PutObjectArgs.builder()
-                            .bucket(objectStorageConfig.getBucket())
+                            .bucket(properties.bucket())
                             .object(file.getFullPath())
                             .stream(new ByteArrayInputStream(file.getContent()), file.getSize(), -1)
                             .contentType(file.getContentType())
                             .build()
             );
 
-            String url = getUrl(file.getFullPath());
-
-            return StorageObject.builder()
+            return UploadedFile.builder()
                     .fileName(file.getFileName())
                     .fullPath(file.getFullPath())
-                    .url(url)
+                    .url(getUrl(file.getFullPath()))
                     .contentType(file.getContentType())
                     .size(file.getSize())
                     .build();
 
         } catch (Exception e) {
-            log.error("Error al subir archivo {}: {}", file.getFullPath(), e.getMessage());
-            throw new RuntimeException("No se pudo subir el archivo", e);
+            log.error("Failed to upload file {}: {}", file.getFullPath(), e.getMessage(), e);
+            throw new StorageUploadException(file.getFullPath());
         }
+    }
+
+    @Override
+    public List<UploadedFile> uploadMultiple(List<FileToUpload> files) {
+        return files.stream().map(this::upload).toList();
     }
 
     @Override
@@ -58,13 +68,12 @@ public class MinioStorageAdapter implements StoragePort {
         try {
             return minioClient.getObject(
                     GetObjectArgs.builder()
-                            .bucket(objectStorageConfig.getBucket())
+                            .bucket(properties.bucket())
                             .object(fullPath)
                             .build()
             );
         } catch (Exception e) {
-            log.error("Error al descargar archivo {}: {}", fullPath, e.getMessage());
-            throw new RuntimeException("No se pudo descargar el archivo", e);
+            throw new StorageDownloadException(fullPath);
         }
     }
 
@@ -73,14 +82,18 @@ public class MinioStorageAdapter implements StoragePort {
         try {
             minioClient.removeObject(
                     RemoveObjectArgs.builder()
-                            .bucket(objectStorageConfig.getBucket())
+                            .bucket(properties.bucket())
                             .object(fullPath)
                             .build()
             );
         } catch (Exception e) {
-            log.error("Error al eliminar archivo {}: {}", fullPath, e.getMessage());
-            throw new RuntimeException("No se pudo eliminar el archivo", e);
+            throw new StorageDeleteException(fullPath);
         }
+    }
+
+    @Override
+    public void deleteMultiple(List<String> fullPaths) {
+        fullPaths.forEach(this::delete);
     }
 
     @Override
@@ -88,15 +101,14 @@ public class MinioStorageAdapter implements StoragePort {
         try {
             return minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
-                            .bucket(objectStorageConfig.getBucket())
+                            .bucket(properties.bucket())
                             .object(fullPath)
                             .method(Method.GET)
                             .expiry(7, TimeUnit.DAYS)
                             .build()
             );
         } catch (Exception e) {
-            log.error("Error al obtener URL de {}: {}", fullPath, e.getMessage());
-            throw new RuntimeException("No se pudo obtener la URL del archivo", e);
+            throw new StorageUploadException(fullPath);
         }
     }
 
@@ -105,7 +117,7 @@ public class MinioStorageAdapter implements StoragePort {
         try {
             minioClient.statObject(
                     StatObjectArgs.builder()
-                            .bucket(objectStorageConfig.getBucket())
+                            .bucket(properties.bucket())
                             .object(fullPath)
                             .build()
             );
@@ -113,24 +125,19 @@ public class MinioStorageAdapter implements StoragePort {
         } catch (ErrorResponseException e) {
             return false;
         } catch (Exception e) {
-            log.error("Error al verificar existencia de {}: {}", fullPath, e.getMessage());
-            throw new RuntimeException("No se pudo verificar el archivo", e);
+            throw new StorageUploadException(fullPath);
         }
     }
 
     private void ensureBucketExists() throws Exception {
         boolean exists = minioClient.bucketExists(
-                BucketExistsArgs.builder()
-                        .bucket(objectStorageConfig.getBucket())
-                        .build()
+                BucketExistsArgs.builder().bucket(properties.bucket()).build()
         );
+
         if (!exists) {
             minioClient.makeBucket(
-                    MakeBucketArgs.builder()
-                            .bucket(objectStorageConfig.getBucket())
-                            .build()
+                    MakeBucketArgs.builder().bucket(properties.bucket()).build()
             );
-            log.info("Bucket creado: {}", objectStorageConfig.getBucket());
         }
     }
 }
