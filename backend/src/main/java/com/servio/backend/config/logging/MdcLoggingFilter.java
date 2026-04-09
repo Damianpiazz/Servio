@@ -1,9 +1,11 @@
 package com.servio.backend.config.logging;
 
+import com.servio.backend.identity.security.UserPrincipal;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
@@ -15,6 +17,7 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Component
 public class MdcLoggingFilter extends OncePerRequestFilter {
 
@@ -46,13 +49,11 @@ public class MdcLoggingFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             long duration = System.currentTimeMillis() - start;
 
-            logger.info(String.format("%s %s → %d (%dms)",
+            log.info("{} {} → {} ({}ms)",
                     request.getMethod(),
                     request.getRequestURI(),
                     response.getStatus(),
-                    duration
-            ));
-
+                    duration);
         } finally {
             MDC.clear();
         }
@@ -68,8 +69,8 @@ public class MdcLoggingFilter extends OncePerRequestFilter {
     private void setUserIdIfAuthenticated() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated()
-                && auth.getPrincipal() instanceof com.servio.backend.identity.domain.User user) {
-            MDC.put(USER_KEY, String.valueOf(user.getId()));
+                && auth.getPrincipal() instanceof UserPrincipal principal) {
+            MDC.put(USER_KEY, String.valueOf(principal.getId()));
         }
     }
 }
